@@ -1,0 +1,36 @@
+# 定义输入用户信息选项的"特征名称"字段名，该扩展字段定义了多项用户信息。
+distinguished_name = req_distinguished_name
+
+# 生成自签名证书时要使用的证书扩展项字段名，该扩展字段定义了要加入到证书中的一系列扩展项。
+x509_extensions = v3_req
+
+# 如果设为no，那么 req 指令将直接从配置文件中读取证书字段的信息，而不提示用户输入。
+prompt = no
+
+
+[req_distinguished_name]
+#国家代码，一般都是CN(大写)
+C = CN
+#省份
+ST = Beijing
+#城市
+L = Beijing
+#企业/单位名称
+O = tuduweb
+#企业部门
+OU = dev
+#证书的主域名
+CN = 172.20.144.113
+
+##### 要加入到证书请求中的一系列扩展项 #####
+[v3_req]
+keyUsage = critical, digitalSignature, keyAgreement
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+
+[ alt_names ]
+DNS.1 = onebinary.com
+DNS.2 = *.onebinary.com
+IP.1 = 172.20.144.113
+IP.2 = 127.0.0.1
