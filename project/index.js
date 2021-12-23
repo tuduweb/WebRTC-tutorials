@@ -30,6 +30,10 @@ app.get('/camera', (req, res) => {
     res.sendFile(__dirname + '/camera.html');
 });
 
+app.get('/camera2', (req, res) => {
+    res.sendFile(__dirname + '/camera2.html')
+})
+
 
 io.on("connection", (socket) => {
     //连接加入子房间
