@@ -34,6 +34,8 @@ app.get('/camera2', (req, res) => {
     res.sendFile(__dirname + '/camera2.html')
 })
 
+let userInfos = {}
+
 
 io.on("connection", (socket) => {
     //连接加入子房间
@@ -44,7 +46,7 @@ io.on("connection", (socket) => {
     socket.on("disconnect", () => {
         console.log("user disconnected: " + socket.id);
         //某个用户断开连接的时候，我们需要告诉所有还在线的用户这个信息
-        socket.broadcast.emit('user disconnected', socket.id);
+        socket.broadcast.emit('user disconnected', {sender: socket.id});
     });
 
     socket.on("chat message",(msg) => {
@@ -55,13 +57,15 @@ io.on("connection", (socket) => {
 
     //当有新用户加入，打招呼时，需要转发消息到所有在线用户。
     socket.on('new user greet', (data) => {
+        //userName
+        userInfos[socket.id] = data.userName;
         console.log(data);
         console.log(socket.id + ' greet ' + data.msg);
-        socket.broadcast.emit('need connect', {sender: socket.id, msg : data.msg});
+        socket.broadcast.emit('need connect', {sender: socket.id, msg : data.msg, senderUserName: data.userName});
     });
     //在线用户回应新用户消息的转发
     socket.on('ok we connect', (data) => {
-        io.to(data.receiver).emit('ok we connect', {sender : data.sender});
+        io.to(data.receiver).emit('ok we connect', {sender : data.sender, userName: data.userName});
     });
 
     //sdp 消息的转发

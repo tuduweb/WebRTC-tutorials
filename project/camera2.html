@@ -5,7 +5,13 @@
     <title>hello world</title>
     <style>
         #main-page {
+            position: absolute;
+            top:0;
+            bottom: 0;
+            left: 0;
+            right: 0;
             width: 100%;
+            height: 100%;
             overflow: hidden;
         }
 
@@ -14,15 +20,40 @@
         }
 
         #main-left {
-            width: 30%;
+            position: absolute;
+            top:0;
+            bottom: 0;
+            left: 0;
+            width: 300px;
+
             float: left;
             background-color: #ccc;
         }
 
+        #local-video video{
+            width: 290px;
+            margin: 0 5px;
+        }
+
         #main-right {
-            padding: 0 10px;
-            width: 70% - 20px;
+            position: absolute;
+            top:0;
+            bottom: 50px;
+            left: 300px;
+            right: 0;
+
             float: left;
+
+            background-color: azure;
+        }
+
+        #main-bottom{
+            position: absolute;
+            bottom: 0px;
+            height: 50px;
+            left: 300px;
+            right: 0;
+            background: blueviolet;
         }
 
         #user-list {
@@ -58,9 +89,16 @@
     <div id="main-page">
 
         <div id="main-left">
+            <div>当前在线人数[<span id="onlineUserNum">10</span>]人</div>
             <div id="me">
                 hello
             </div>
+
+            <div id="local-video">
+                <button id="open-camera" style="display: block;">打开视频</button>
+                <video autoplay controls id="video-local"></video>
+            </div>
+
             <div class='user-list'>
                 <ul id="user-list">
                     <!-- <li id="user-test">
@@ -75,13 +113,16 @@
 
         </div>
         <div id="main-right">
-            <div id="local-video">
-                <button id="open-camera" style="display: block;">打开视频</button>
-                <video autoplay controls id="video-local"></video>
-            </div>
-
             <!-- <video autoplay controls id="video-remote"></video> -->
             <div id="videos"></div>
+        </div>
+
+        <div id="main-bottom">
+            <ul>
+                <li>1</li>
+                <li>2</li>
+                <li>3</li>
+            </ul>
         </div>
 
 
@@ -138,7 +179,7 @@
                         localStream = stream;
 
                         localVideoElm.srcObject = stream;
-                        $(localVideoElm).width(800);
+                        $(localVideoElm).width(290);
 
                     }, function (error) {
                         console.log("访问用户媒体设备失败：", error.name, error.message);
@@ -232,6 +273,8 @@
                 document.getElementById(`${parterName}-video`).srcObject.getTracks().forEach(track => track.stop());
             }
             
+            document.getElementById(`${parterName}-video`).remove();
+
             pc[parterName].ontrack = null;
             pc[parterName].onremovetrack = null;
             pc[parterName].onremovestream = null;
@@ -246,10 +289,10 @@
         }
 
         //新用户连接到系统
-        let newUserConnected = (userId) => {
+        let newUserConnected = (userId, userName) => {
             let li = $('<li></li>').attr('user-id', userId);
             let dl = $('<dl></dl>').appendTo(li)
-            let name = $('<dt></dt>').text(userId).appendTo(dl)
+            let name = $('<dt></dt>').text(userName + ":" + userId).appendTo(dl)
             let call = $('<dd><button class="call">发起通话</button></dd>').appendTo(dl);
             let hangup = $('<dd><button class="hangup">挂断</button></dd>').appendTo(dl);
 
@@ -351,6 +394,10 @@
         var currentConnect = 0;
 
         socket.on('connect', () => {
+
+            //var _name = prompt("Please enter your name","")
+            var _name = Helper.generateUserName()
+
             socketID = socket.id;//socket.io.engine.id;
             console.log('hello local user: ' + socket.id);
 
@@ -360,34 +407,39 @@
                 init(socketID);
             });
 
-            $('#me').text('hello ' + socket.id);
+            //初始化个人信息
+            $('#me').text('hello ' + _name + ": " + socket.id);
 
             //加入时候向服务器发送订阅/注册?
-            socket.emit('new user greet', { msg: 'hello' });
-
-
+            socket.emit('new user greet', { msg: 'hello', userName: _name });
+            
+            //greet -> server ->(others) need connect
             socket.on('need connect', (data) => {
                 console.log('someone need connect' + data.msg);
                 console.log(data.sender);
 
-                newUserConnected(data.sender)
+                newUserConnected(data.sender, data.senderUserName)
 
-                socket.emit('ok we connect', { sender: socketID, receiver: data.sender });
+                socket.emit('ok we connect', { sender: socketID, receiver: data.sender, userName: _name });
 
                 pc.push(data.sender);
 
                 currentConnect++;
+                $("#onlineUserNum").text(currentConnect)
 
             })
 
-            socket.on('user disconnected', (user) => {
-                currentConnect
-                console.log('user disconnected ' + user)
-                //console.log('disconnect' +  $('#user-list li[user-id="' + user + '"]').text())
-                $('#user-list li[user-id="' + user + '"]').remove();
+            socket.on('user disconnected', (data) => {
+                console.log('user disconnected ' + data.sender)
+                //console.log('disconnect' +  $('#user-list li[user-id="' + data.sender + '"]').text())
+
+                userDisconnected(data.sender)
+                $('#user-list li[user-id="' + data.sender + '"]').remove();
 
                 if (currentConnect > 0)
                     currentConnect--;
+
+                $("#onlineUserNum").text(currentConnect)
             })
 
             socket.on('ok we connect', (data) => {
@@ -396,18 +448,32 @@
                 // let li = $('<li></li>').text(data.sender).attr('user-id', data.sender);
                 // $('#user-list').append(li);
 
-                newUserConnected(data.sender);
+                newUserConnected(data.sender, data.userName);
 
                 pc.push(data.sender);
 
                 console.log(pc);
 
                 currentConnect++;
+                $("#onlineUserNum").text(currentConnect)
             })
 
         });
 
 
+    </script>
+
+
+    
+    <script>
+        //helpers
+        const _nameSeed = ["企鹅", "狗狗", "猫咪", "狐狸", "青蛙", "小象", "小猪", "大喵", "麻雀", "饲养员"]
+        Helper = {
+            generateUserName: function() {
+                //0~9
+                return _nameSeed[Math.floor(Math.random()*_nameSeed.length)] + Math.floor(Math.random()*_nameSeed.length) + "号"
+            }
+        }
     </script>
 
 
